@@ -90,6 +90,9 @@ logfile /home/ubuntu/redis/log/redis.log
 
 daemonize yes
 
+maxmemory 768mb
+maxmemory-policy allkeys-lru
+
 ```
 
 ### Initialize
