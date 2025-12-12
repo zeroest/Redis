@@ -120,3 +120,5 @@ cf. config
 
 ref) [https://kominjae.tistory.com/261](https://kominjae.tistory.com/261)
 
+ref) [[redisgate] Redis CLUSTER-REQUIRE-FULL-COVERAGE](https://redisgate.jp/redis/cluster/cluster-require-full-coverage.php)
+
