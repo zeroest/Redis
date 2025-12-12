@@ -95,66 +95,32 @@ maxmemory-policy allkeys-lru
 
 ```
 
-### Initialize
+## Create Cluster
 
 cluster-enabled yes 설정 후 레디스를 클러스터 모드로 각기 다른 서버 6대에 레디스를 실행
 
-입력한 순서대로 3개의 노드는 마스터, 나머지 노드는 복제본이 되도록 구성될 것이라는 정보를 확인할 수 있음  
-각 마스터별로 어떤 해시슬롯을 할당받게 되는지, 각 마스터 노드에 어떤 복제본이 복제되는지 등의 정보를 알 수 있다  
-
-redis/script/init-server.sh
 ```bash
-#!/bin/bash
-
 redis-server /home/ubuntu/redis/redis.conf
-
 ```
 
-```log
-9231:C 10 Dec 2025 11:28:34.647 # WARNING: Changing databases number from 16 to 1 since we are in cluster mode
-9231:C 10 Dec 2025 11:28:34.647 # WARNING Memory overcommit must be enabled! Without it, a background save or replication may fail under low memory condition. Being disabled, it can also cause failures without low memory condition, see https://github.com/jemalloc/jemalloc/issues/1328. To fix this issue add 'vm.overcommit_memory = 1' to /etc/sysctl.conf and then reboot or run the command 'sysctl vm.overcommit_memory=1' for this to take effect.
-9231:C 10 Dec 2025 11:28:34.647 # WARNING Your system is configured to use the 'xen' clocksource which might lead to degraded performance. Check the result of the [slow-clocksource] system check: run 'redis-server --check-system' to check if the system's clocksource isn't degrading performance.
-9231:C 10 Dec 2025 11:28:34.647 * oO0OoO0OoO0Oo Redis is starting oO0OoO0OoO0Oo
-9231:C 10 Dec 2025 11:28:34.647 * Redis version=8.4.0, bits=64, commit=00000000, modified=1, pid=9231, just started
-9231:C 10 Dec 2025 11:28:34.647 * Configuration loaded
-9231:M 10 Dec 2025 11:28:34.648 * Increased maximum number of open files to 10032 (it was originally set to 1024).
-9231:M 10 Dec 2025 11:28:34.648 * monotonic clock: POSIX clock_gettime
-                _._                                                  
-           _.-``__ ''-._                                             
-      _.-``    `.  `_.  ''-._           Redis Open Source            
-  .-`` .-```.  ```\/    _.,_ ''-._      8.4.0 (00000000/1) 64 bit
- (    '      ,       .-`  | `,    )     Running in cluster mode
- |`-._`-...-` __...-.``-._|'` _.-'|     Port: 6379
- |    `-._   `._    /     _.-'    |     PID: 9231
-  `-._    `-._  `-./  _.-'    _.-'                                   
- |`-._`-._    `-.__.-'    _.-'_.-'|                                  
- |    `-._`-._        _.-'_.-'    |           https://redis.io       
-  `-._    `-._`-.__.-'_.-'    _.-'                                   
- |`-._`-._    `-.__.-'    _.-'_.-'|                                  
- |    `-._`-._        _.-'_.-'    |                                  
-  `-._    `-._`-.__.-'_.-'    _.-'                                   
-      `-._    `-.__.-'    _.-'                                       
-          `-._        _.-'                                           
-              `-.__.-'                                               
-
-9231:M 10 Dec 2025 11:28:34.650 * No cluster configuration found, I'm dbb0922066607414a84dc5cd9835f073033c11bb
-9231:M 10 Dec 2025 11:28:34.655 * Server initialized
-9231:M 10 Dec 2025 11:28:34.655 * BGSAVE done, 0 keys saved, 0 keys skipped, 107 bytes written.
-9231:M 10 Dec 2025 11:28:34.658 * Creating AOF base file appendonly.aof.1.base.rdb on server start
-9231:M 10 Dec 2025 11:28:34.662 * Creating AOF incr file appendonly.aof.1.incr.aof on server start
-9231:M 10 Dec 2025 11:28:34.662 * Ready to accept connections tcp
-```
-
-### Create Cluster
-
+이후 클러스터 초기화 작업을 진행한다  
 클러스터 생성은 클러스터 노드중 한대의 서버에서 실행하면 된다  
 
-redis/script/cluster-create.sh
+```bash
+redis-cli --cluster create [host:port] --cluster-replicas 1
 ```
-#!/bin/bash
 
+--cluster create 옵션을 이용해 새로운 클러스터를 생성한다는 것을 명시  
+클러스터에 추가할 레디스의 ip:port 쌍을 나열  
+--cluster-replicas 1 옵션은 각 마스터마다 1개의 복제본을 추가할 것임을 의미한다  
+
+
+```bash
 redis-cli --cluster create rm1:6379 rm2:6379 rm3:6379 rr1:6379 rr2:6379 rr3:6379 --cluster-replicas 1 -a redis
 ```
+
+입력한 순서대로 3개의 노드는 마스터, 나머지 노드는 복제본이 되도록 구성될 것이라는 정보를 확인할 수 있음  
+각 마스터별로 어떤 해시슬롯을 할당받게 되는지, 각 마스터 노드에 어떤 복제본이 복제되는지 등의 정보를 알 수 있다  
 
 ```log
 Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
@@ -210,15 +176,25 @@ M: 314a87796f7365f49bc9bf5f04edfbd5cb339d0b 192.168.0.13:6379
 
 ```
 
-### Cluster Nodes
+정상적으로 초기화가 완료되면 앞에서와 같이 `[OK] All 16384 slots covered.` 커맨드가 떨어지며 생성이 종료된다  
+
+복제본 노드는 마스터와 동일한 데이터를 저장하기 때문에 해시슬롯 내부의 데이터를 동일하게 저장하긴 하지만, 해시슬롯을 할당받진 않는다  
+
+## Cluster Nodes
 
 클러스터 상태 확인  
 
-redis/script/cluster-nodes.sh
 ```bash
-#!/bin/bash
-
 redis-cli -a redis cluster nodes
+```
+
+```log
+dbb0922066607414a84dc5cd9835f073033c11bb 192.168.0.182:6379@16379 slave 314a87796f7365f49bc9bf5f04edfbd5cb339d0b 0 1765370055582 2 connected
+1a26d03a8f9ee8026e32abc1092e25bf4a63d2da 192.168.0.6:6379@16379 slave ea005587a13b7b50cbc498da976abcf7e44b1a2d 0 1765370055583 1 connected
+dcb44aa080e04845c1e0c8d7fd256fb9bda623bf 192.168.0.162:6379@16379 slave 1fdb4f59f79d071fb2730e7b7bbf34b926d048d1 0 1765370056084 3 connected
+1fdb4f59f79d071fb2730e7b7bbf34b926d048d1 192.168.0.132:6379@16379 master - 0 1765370055582 3 connected 10923-16383
+ea005587a13b7b50cbc498da976abcf7e44b1a2d 192.168.0.161:6379@16379 myself,master - 0 0 1 connected 0-5460
+314a87796f7365f49bc9bf5f04edfbd5cb339d0b 192.168.0.13:6379@16379 master - 0 1765370055000 2 connected 5461-10922
 ```
 
 \<id\> \<ip:port@cport\> \<flags\> \<master\> \<ping-sent\> \<pong-recv\> \<config-epoch\> \<link-state\> \<slot\> \<slot\> ... \<slot\>
@@ -235,16 +211,7 @@ redis-cli -a redis cluster nodes
 | link-state | 클러스터 버스에 사용되는 링크의 상태를 의미한다(connected/disconnected). |
 | slot | 노드가 갖고 있는 해시슬롯의 범위를 표시한다. |
 
-```log
-dbb0922066607414a84dc5cd9835f073033c11bb 192.168.0.182:6379@16379 slave 314a87796f7365f49bc9bf5f04edfbd5cb339d0b 0 1765370055582 2 connected
-1a26d03a8f9ee8026e32abc1092e25bf4a63d2da 192.168.0.6:6379@16379 slave ea005587a13b7b50cbc498da976abcf7e44b1a2d 0 1765370055583 1 connected
-dcb44aa080e04845c1e0c8d7fd256fb9bda623bf 192.168.0.162:6379@16379 slave 1fdb4f59f79d071fb2730e7b7bbf34b926d048d1 0 1765370056084 3 connected
-1fdb4f59f79d071fb2730e7b7bbf34b926d048d1 192.168.0.132:6379@16379 master - 0 1765370055582 3 connected 10923-16383
-ea005587a13b7b50cbc498da976abcf7e44b1a2d 192.168.0.161:6379@16379 myself,master - 0 0 1 connected 0-5460
-314a87796f7365f49bc9bf5f04edfbd5cb339d0b 192.168.0.13:6379@16379 master - 0 1765370055000 2 connected 5461-10922
-```
-
-### redis-cli connection
+## redis-cli connection
 
 redis-cli -c -h \<ip\> -p \<port\> -a \<password\>
 
