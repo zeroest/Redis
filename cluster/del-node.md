@@ -2,7 +2,7 @@
 # 노드 제거
 
 ```bash
-redis-cli --cluster del-node <기존 노드 IP:PORT> <삭제할 노드 IP>
+redis-cli --cluster del-node <기존 노드 IP:PORT> <삭제할 노드 ID>
 ```
 
 제거하려는 노드가 마스터, 복제본 노드인지 상관 없이 모든 노드를 같은 방식으로 삭제할 수 있지만, 마스터 노드의 경우 제거하기 전에 노드에 저장된 데이터가 없는 상태여야 한다.  
